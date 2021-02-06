@@ -1,0 +1,86 @@
+# -*- coding: utf-8 -*-
+# @Time    : 2021/1/14 14:40
+# @Author  : Eric_Douzhixin
+# @File    : renumber_pdb.py
+
+import os
+import numpy as np
+
+# define a function to print list content line by line
+def printlines(list):
+    for i in list:
+        print(i)
+
+pdbdir = 'B:\\fiber'
+pdbfile = '' #存储待重新排序的pdb文件
+for file in os.listdir(pdbdir):
+    if file == 'cellulose.pdb':
+        pdbfile = file
+
+info = [] #存储pdb所有信息
+with open(os.path.join(pdbdir, pdbfile), 'r') as text:
+    for i in text:
+        i = i.split()
+        info.append(i)
+
+#删除最后的END
+info.pop()
+chainnum = [] # 保存链的编号
+#生成两个索引的数组用于迭代
+for i in info:
+    if i[10] not in chainnum:
+        chainnum.append(i[10])
+resinum = list(range(1,29)) # [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+
+#存PDB信息到三维数组
+renumber = np.ones((18,28,23), dtype=list)
+
+# 把所有信息按照三维数组存起来（20，12，23），20条链，12个糖环，23个原子
+for i in chainnum:
+    for j in resinum:
+        count = 0
+        for line in info:
+            if line[4] == str(j) and line[10] == i:
+                renumber[chainnum.index(i)][resinum.index(j)][count] = line
+                count += 1
+renumber = renumber.tolist()
+
+# 重新排序
+with open(os.path.join(pdbdir, 'out.pdb'), 'w', newline='') as f:
+    for chain in renumber:
+        chain = list(filter(lambda x: x != 1, chain))
+        chain = chain[::-1]
+        for resi in chain:
+            for atom in resi:
+                if type(atom) == list:
+                    atom[3] = 'BGLC'
+
+                    a = '{:>}{: >7}{}{: <4}{:>4}{: >5}{: >12}{: >8}{: >8}{: >6}{: >6}{}{: <4}{: >2}'\
+                        .format(atom[0],atom[1],'  ',atom[2],atom[3],atom[4],atom[5],atom[6],atom[7],atom[8],atom[9]
+                                ,'      ',atom[10],atom[11])
+                    f.writelines(a)
+                    f.write('\n')
+
+output = [] #最终完成的pdb
+# 重新标号
+with open(os.path.join(pdbdir, 'out.pdb'), 'r', newline='') as read:
+    cont = read.readlines()
+    for line in cont:
+        line = line.split()
+        output.append(line)
+orinum = [x for x in range(1,29)][::-1]
+print(orinum)
+afternum = orinum[::-1]
+print(afternum)
+with open(os.path.join(pdbdir, 'output.pdb'), 'w', newline='') as do:
+    for element in output:
+        #改进算法
+        for a,b in zip(orinum, afternum):
+            if element[4] == str(a):
+                element[4] = b
+        a = '{:>}{: >7}{}{: <4}{:>4}{: >5}{: >12}{: >8}{: >8}{: >6}{: >6}{}{: <4}{: >2}' \
+            .format(element[0], element[1], '  ', element[2], element[3], element[4], element[5], element[6], element[7], element[8], element[9]
+                    , '      ', element[10], element[11])
+        do.writelines(a)
+        do.write('\n')
+    do.write('END')
